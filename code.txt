@@ -1,3 +1,4 @@
+CSV TO JSON:
 import csv
 import json
 import os
@@ -28,3 +29,84 @@ else:
         json.dump(csv_data, json_file, indent=2)
 
     print(f'CSV file has been successfully converted to JSON and saved as {json_file_path}')
+
+
+
+JSON AS DATA:
+import React, { useState, useEffect, useMemo } from "react";
+import { FixedSizeList as List } from "react-window";
+import GraphWithProvider from "./components/HierarchicalGraph";
+
+const controlsStyles = {
+  marginBottom: "20px",
+};
+
+const controlsLabelStyles = {
+  marginRight: "10px",
+};
+
+const controlsInputStyles = {
+  marginRight: "10px",
+};
+
+const controlsSpanStyles = {
+  fontWeight: "bold",
+};
+
+const graphContainerStyles = {
+  height: "calc(100vh - 50px)", // Adjust the height based on your controls' height
+  overflow: "hidden",
+};
+
+const App: React.FC = () => {
+  const [sliderValue, setSliderValue] = useState<number>(0);
+  const [rawData, setRawData] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch data from data.json
+    fetch("data.json")
+      .then((response) => response.json())
+      .then((data) => {
+        setRawData(data);
+      })
+      .catch((error) => console.error("Error fetching data:", error));
+  }, []);
+
+  // Use useMemo to memoize the processed data
+  const processedData = useMemo(() => {
+    // Process the rawData here if needed
+    return rawData.map((item) => ({
+      parent_node: item.parentNode,
+      node: item.node,
+      graph_depth: item.graphDepth,
+      type: item.type,
+      name: item.name,
+      value: item.value,
+    }));
+  }, [rawData]);
+
+  return (
+    <div style={{ height: "100vh", overflow: "hidden" }}>
+      <div style={controlsStyles}>
+        <label style={controlsLabelStyles}>
+          Slider Value:
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sliderValue}
+            onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
+            style={controlsInputStyles}
+          />
+          <span style={controlsSpanStyles}>{sliderValue}</span>
+        </label>
+      </div>
+      <div style={graphContainerStyles}>
+        <GraphWithProvider data={processedData} sliderValue={sliderValue} />
+      </div>
+    </div>
+  );
+};
+
+export default App;
+
