@@ -110,3 +110,37 @@ const App: React.FC = () => {
 
 export default App;
 
+
+
+Expanding, collapsing pardha:
+ const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
+    const childNodes = allNodes.filter(n => n.data.parentNode === node.id);
+    if (childNodes.length > 0) {
+      const hiddenNodes = childNodes.filter(n => n.hidden);
+      if (hiddenNodes.length > 0) {
+        // Expand nodes
+        hiddenNodes.forEach(child => {
+          child.hidden = false;
+        });
+        setNodes(prevNodes => {
+          const updatedNodes = [...prevNodes, ...hiddenNodes];
+          return getLayoutedNodes(updatedNodes, edges, direction);
+        });
+        generateEdges(node.id);
+      } else {
+        // Collapse nodes
+        setNodes(prevNodes => {
+          const updatedNodes = prevNodes.map(n =>
+            childNodes.some(child => child.id === n.id)
+              ? { ...n, hidden: true }
+              : n
+          );
+          const remainingEdges = edges.filter(
+            edge => !childNodes.some(child => edge.target === child.id)
+          );
+          setEdges(remainingEdges);
+          return getLayoutedNodes(updatedNodes, remainingEdges, direction);
+        });
+      }
+    }
+  }, [allNodes, edges, generateEdges, direction]);
