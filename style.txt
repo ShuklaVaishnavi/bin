@@ -1,0 +1,50 @@
+import React, { FC } from 'react';
+import { useStoreState } from 'react-flow-renderer';
+
+const Sidebar: FC = () => {
+  const nodes = useStoreState((store) => store.nodes);
+
+  return (
+    <div className="sidebar">
+      <div className="section">
+        <h2>Graph</h2>
+        <label>
+          Orientation:
+          <select>
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
+          </select>
+        </label>
+        <label>
+          Task ID:
+          <input type="text" />
+        </label>
+        <label>
+          Parent Node:
+          <select>
+            {nodes.map((node) => (
+              <option key={node.id} value={node.id}>
+                {node.id}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="section">
+        <h2>Information</h2>
+        <label>
+          Nodes:
+          <select>
+            {nodes.map((node) => (
+              <option key={node.id} value={node.id}>
+                {node.id}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+};
+
+export default Sidebar;
