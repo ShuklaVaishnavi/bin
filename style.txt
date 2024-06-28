@@ -1,50 +1,53 @@
-import React, { FC } from 'react';
-import { useStoreState } from 'react-flow-renderer';
+import React from 'react';
+import { Handle, Position, Node } from 'react-flow-renderer';
 
-const Sidebar: FC = () => {
-  const nodes = useStoreState((store) => store.nodes);
+interface INodeProps {
+  data: {
+    isLeaf: boolean;
+  };
+}
 
+const ColoredNode: React.FC<INodeProps & Node> = ({ data }) => {
   return (
-    <div className="sidebar">
-      <div className="section">
-        <h2>Graph</h2>
-        <label>
-          Orientation:
-          <select>
-            <option value="horizontal">Horizontal</option>
-            <option value="vertical">Vertical</option>
-          </select>
-        </label>
-        <label>
-          Task ID:
-          <input type="text" />
-        </label>
-        <label>
-          Parent Node:
-          <select>
-            {nodes.map((node) => (
-              <option key={node.id} value={node.id}>
-                {node.id}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="section">
-        <h2>Information</h2>
-        <label>
-          Nodes:
-          <select>
-            {nodes.map((node) => (
-              <option key={node.id} value={node.id}>
-                {node.id}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+    <div style={{ background: data.isLeaf ? 'red' : 'green', width: '100px', height: '100px' }}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };
 
-export default Sidebar;
+export default ColoredNode;
+
+
+
+
+import React from 'react';
+import ReactFlow from 'react-flow-renderer';
+import ColoredNode from './ColoredNode';
+
+const nodeTypes = {
+  coloredNode: ColoredNode,
+};
+
+const nodes = [
+  {
+    id: '1',
+    type: 'coloredNode',
+    data: { isLeaf: false },
+    position: { x: 100, y: 100 },
+  },
+  {
+    id: '2',
+    type: 'coloredNode',
+    data: { isLeaf: true },
+    position: { x: 200, y: 200 },
+  },
+];
+
+const MyFlow = () => {
+  return <ReactFlow elements={nodes} nodeTypes={nodeTypes} />;
+};
+
+export default MyFlow;
+
+
