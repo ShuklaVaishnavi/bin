@@ -1,53 +1,71 @@
-import React from 'react';
-import { Handle, Position, Node } from 'react-flow-renderer';
+import React, { useState, useEffect } from 'react';
+import { Handle, Position, Node, FlowElement } from 'react-flow-renderer';
+import axios from 'axios';
 
 interface INodeProps {
   data: {
-    isLeaf: boolean;
+    parentNode: string | null;
   };
 }
 
-const ColoredNode: React.FC<INodeProps & Node> = ({ data }) => {
+const ColoredNode: React.FC<INodeProps & Node> = ({ id, data }) => {
   return (
-    <div style={{ background: data.isLeaf ? 'red' : 'green', width: '100px', height: '100px' }}>
+    <div style={{ background: getNodeColor(id), width: '100px', height: '100px' }}>
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
 };
 
-export default ColoredNode;
+const App = () => {
+  const [nodes, setNodes] = useState<FlowElement[]>([]);
+  const [allNodes, setAllNodes] = useState<Node[]>([]);
 
+  useEffect(() => {
+    const fetchNodes = async () => {
+      try {
+        const response = await axios.get('https://your-api-url');
+        const data = response.data;
+        const processedNodes: Node[] = data.map((item) => ({
+          id: item.node,
+          type: item.type || 'default',
+          data: {
+            label: item.node,
+            value: item.value,
+            graphDepth: item.graphDepth,
+            parentNode: item.parentNode,
+          },
+          position: { x: 0, y: 0 },
+          draggable: true,
+          hidden: true,
+          style: { backgroundColor: getNodeColor(item.node) },
+        }));
 
+        setAllNodes(processedNodes);
 
+        // Set the first node (root node) as the initial node
+        if (processedNodes.length > 0) {
+          setNodes([{ ...processedNodes[0], hidden: false }]);
+        }
+      } catch (error) {
+        console.error('Error fetching node data', error);
+      }
+    };
 
-import React from 'react';
-import ReactFlow from 'react-flow-renderer';
-import ColoredNode from './ColoredNode';
+    fetchNodes();
+  }, [setNodes]);
 
-const nodeTypes = {
-  coloredNode: ColoredNode,
+  const getNodeColor = (nodeId: string) => {
+    const isLeaf = !allNodes.some((node) => node.data.parentNode === nodeId);
+    return isLeaf ? 'red' : 'green';
+  };
+
+  return (
+    <ReactFlow elements={nodes}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+    </ReactFlow>
+  );
 };
 
-const nodes = [
-  {
-    id: '1',
-    type: 'coloredNode',
-    data: { isLeaf: false },
-    position: { x: 100, y: 100 },
-  },
-  {
-    id: '2',
-    type: 'coloredNode',
-    data: { isLeaf: true },
-    position: { x: 200, y: 200 },
-  },
-];
-
-const MyFlow = () => {
-  return <ReactFlow elements={nodes} nodeTypes={nodeTypes} />;
-};
-
-export default MyFlow;
-
-
+export default App;
