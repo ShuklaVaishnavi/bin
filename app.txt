@@ -4,19 +4,12 @@ const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
   if (currentExpandedNodes.has(node.id)) {
     // Collapse the node
     currentExpandedNodes.delete(node.id);
-    const nodesToKeep = nodes.filter(
-      (n) =>
-        !allNodes
-          .filter((an) => an.data.parentNode === node.id)
-          .some((child) => child.id === n.id)
-    );
+
+    // Remove edges connected to the collapsed node's children
     const edgesToKeep = edges.filter(
-      (e) =>
-        !allNodes
-          .filter((an) => an.data.parentNode === node.id)
-          .some((child) => e.source === node.id && e.target === child.id)
+      (e) => e.source !== node.id && e.target !== node.id
     );
-    setNodes(nodesToKeep);
+
     setEdges(edgesToKeep);
   } else {
     // Expand the node
@@ -24,5 +17,5 @@ const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
     expandNode(node);
   }
 
-  setExpandedNodes(currentExpandedNodes);
-}, [allNodes, nodes, edges, expandedNodes, expandNode]);
+  setExpandedNodes(new Set(currentExpandedNodes)); // Update expanded nodes set
+}, [edges, expandedNodes, expandNode]);
