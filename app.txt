@@ -12,16 +12,9 @@ import ReactFlow, {
   Connection,
   NodeMouseEventHandler,
 } from 'react-flow-renderer';
-import 'react-flow-renderer/dist/style.css';
 import axios from 'axios';
 import dagre from 'dagre';
-import {
-  graphContainerStyles,
-  controlsLabelStyles,
-  controlsSelectStyles,
-  reactflowWrapperStyles,
-  navbarStyles,
-} from './styles'; // import your styles
+import './styles.css'; // Import your custom styles
 
 interface NodeData {
   node: string;
@@ -75,17 +68,21 @@ const getNodeColor = (node: Node) => {
 };
 
 const App: React.FC = () => {
-  const [elements, setElements] = useState<Node[]>([]);
-  const [direction, setDirection] = useState('TB');
+  const [elements, setElements] = useState<any>([]);
+  const [direction, setDirection] = useState<string>('TB');
   const [selectedParentNode, setSelectedParentNode] = useState<string>('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  
+  const [nodes, setNodes, onNodesChange] = useNodes(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdges(initialEdges);
 
   useEffect(() => {
     const fetchNodes = async () => {
       try {
         const response = await axios.get<NodeData[]>('https://api.example.com/nodes');
         const data = response.data;
-        const processedNodes: Node[] = data.map((item) => ({
+
+        const processedNodes: Node<any>[] = data.map((item) => ({
           id: item.node,
           type: item.type || 'default',
           data: {
@@ -96,10 +93,10 @@ const App: React.FC = () => {
           },
           position: { x: 0, y: 0 },
           draggable: true,
-          hidden: true,
           style: { backgroundColor: getNodeColor(item) },
         }));
-        const processedEdges: Edge[] = data
+
+        const processedEdges: Edge<any>[] = data
           .filter((item) => item.parentNode)
           .map((item) => ({
             id: `e-${item.parentNode}-${item.node}`,
@@ -111,8 +108,8 @@ const App: React.FC = () => {
 
         // Set the first node (root node) as the initial node
         if (processedNodes.length > 0) {
-          setElements((els) => [
-            ...els,
+          setNodes((prevNodes) => [
+            ...prevNodes,
             { ...processedNodes[0], hidden: false }
           ]);
         }
@@ -126,32 +123,33 @@ const App: React.FC = () => {
 
   const generateEdges = useCallback((nodeId: string) => {
     const newEdges = elements
-      .filter((el) => el.type === 'node' && el.data.parentNode === nodeId)
-      .map((el) => ({
+      .filter((el: any) => el.data.parentNode === nodeId)
+      .map((el: any) => ({
         id: `e-${el.data.parentNode}-${el.id}`,
         source: el.data.parentNode as string,
         target: el.id,
       }));
-    setElements((prevElements) => [...prevElements, ...newEdges]);
-  }, [elements]);
+    setEdges((prevEdges: any) => [...prevEdges, ...newEdges]);
+  }, [elements, setEdges]);
 
   const expandNode = useCallback((node: Node) => {
-    const childNodes = elements.filter((el) => el.type === 'node' && el.data.parentNode === node.id);
+    const childNodes = elements.filter((el: any) => el.data.parentNode === node.id);
     if (childNodes.length > 0) {
-      const newElements = [...elements];
+      const newNodes = [...nodes];
+      const newEdges = [...edges];
 
-      childNodes.forEach((child) => {
+      childNodes.forEach((child: any) => {
         const position = {
           x: node.position.x + (Math.random() - 0.5) * 200,
           y: node.position.y + 100,
         };
-        newElements.push({
+        newNodes.push({
           ...child,
           position,
           hidden: false,
         });
 
-        newElements.push({
+        newEdges.push({
           id: `${node.id}-${child.id}`,
           source: node.id,
           target: child.id,
@@ -164,9 +162,10 @@ const App: React.FC = () => {
         }
       });
 
-      setElements(newElements);
+      setNodes(newNodes);
+      setEdges(newEdges);
     }
-  }, [elements, expandedNodes]);
+  }, [elements, nodes, edges, expandedNodes]);
 
   const onNodeClick: NodeMouseEventHandler = useCallback((event, node) => {
     const currentExpandedNodes = new Set(expandedNodes);
@@ -174,12 +173,20 @@ const App: React.FC = () => {
     if (currentExpandedNodes.has(node.id)) {
       // Collapse the node
       currentExpandedNodes.delete(node.id);
-      const elementsToKeep = elements.filter(
-        (el) =>
-          el.id !== node.id &&
-          !elements.some((child) => child.type === 'edge' && child.source === node.id)
+      const nodesToKeep = nodes.filter(
+        (n) =>
+          !elements
+            .filter((el: any) => el.data.parentNode === node.id)
+            .some((child: any) => child.id === n.id)
       );
-      setElements(elementsToKeep);
+      const edgesToKeep = edges.filter(
+        (e) =>
+          !elements
+            .filter((el: any) => el.data.parentNode === node.id)
+            .some((child: any) => e.source === node.id && e.target === child.id)
+      );
+      setNodes(nodesToKeep);
+      setEdges(edgesToKeep);
     } else {
       // Expand the node
       currentExpandedNodes.add(node.id);
@@ -187,78 +194,84 @@ const App: React.FC = () => {
     }
 
     setExpandedNodes(currentExpandedNodes);
-  }, [elements, expandedNodes, expandNode]);
+  }, [elements, nodes, edges, expandedNodes, expandNode]);
 
   const onConnect = useCallback(
-    (params: Edge | Connection) => setElements((els) => addEdge(params, els)),
-    []
+    (params: Edge | Connection) => setEdges((eds: any) => addEdge(params, eds)),
+    [setEdges]
   );
+
+  useEffect(() => {
+    setNodes((nds) => getLayoutedNodes(nds, edges, direction));
+  }, [edges, direction]);
 
   const handleParentNodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedNodeId = e.target.value;
     setSelectedParentNode(selectedNodeId);
-    const selectedNode = elements.find((el) => el.id === selectedNodeId && el.type === 'node');
+    const selectedNode = elements.find((el: any) => el.id === selectedNodeId);
     if (selectedNode) {
-      setElements([
+      setNodes((prevNodes: any) => [
         { ...selectedNode, hidden: false }
       ]);
+      setEdges([]);
     }
   };
 
   // Get unique parent nodes for the dropdown
-  const uniqueParentNodes = Array.from(new Set(elements.filter((el) => el.type === 'node').map((el) => el.data.parentNode))).filter(Boolean) as string[];
+  const uniqueParentNodes = Array.from(new Set(elements.map((el: any) => el.data.parentNode))).filter(Boolean) as string[];
 
   return (
-    <div style={graphContainerStyles}>
-      <div style={navbarStyles}>
-        <label style={controlsLabelStyles}>
-          Direction:
-          <select
-            style={controlsSelectStyles}
-            value={direction}
-            onChange={(e) => setDirection(e.target.value)}
+    <div style={{ height: '100vh', backgroundColor: '#f0f0f0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '10px', borderBottom: '1px solid #ccc', backgroundColor: '#fff' }}>
+          <label style={{ marginRight: '10px' }}>
+            Direction:
+            <select
+              value={direction}
+              onChange={(e) => setDirection(e.target.value)}
+            >
+              <option value="TB">Top-Bottom</option>
+              <option value="BT">Bottom-Top</option>
+              <option value="LR">Left-Right</option>
+              <option value="RL">Right-Left</option>
+            </select>
+          </label>
+          <label>
+            Parent Node:
+            <select
+              value={selectedParentNode}
+              onChange={handleParentNodeChange}
+            >
+              {uniqueParentNodes.map((nodeId) => {
+                const node = elements.find((el: any) => el.id === nodeId);
+                return node ? (
+                  <option key={node.id} value={node.id}>
+                    {node.data.label}
+                  </option>
+                ) : null;
+              })}
+            </select>
+          </label>
+        </div>
+        <div style={{ flexGrow: 1, position: 'relative' }}>
+          <ReactFlow
+            elements={elements}
+            onNodeMouseEnter={(event, node) => console.log('mouse enter:', node)}
+            onNodeMouseLeave={(event, node) => console.log('mouse leave:', node)}
+            onNodeContextMenu={(event, node) => {
+              event.preventDefault();
+              console.log('context menu:', node);
+            }}
+            onNodeClick={onNodeClick}
+            onConnect={onConnect}
+            snapToGrid={true}
+            snapGrid={[15, 15]}
           >
-            <option value="TB">Top-Bottom</option>
-            <option value="BT">Bottom-Top</option>
-            <option value="LR">Left-Right</option>
-            <option value="RL">Right-Left</option>
-          </select>
-        </label>
-        <label style={controlsLabelStyles}>
-          Parent Node:
-          <select
-            style={controlsSelectStyles}
-            value={selectedParentNode}
-            onChange={handleParentNodeChange}
-          >
-            {uniqueParentNodes.map((nodeId) => {
-              const node = elements.find((el) => el.id === nodeId && el.type === 'node');
-              return node ? (
-                <option key={node.id} value={node.id}>
-                  {node.data.label}
-                </option>
-              ) : null;
-            })}
-          </select>
-        </label>
-      </div>
-      <div style={reactflowWrapperStyles}>
-        <ReactFlow
-          elements={elements}
-          onElementsRemove={() => {}}
-          onConnect={onConnect}
-          onLoad={() => {}}
-          onMove={() => {}}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          zoomOnScroll={true}
-          zoomOnDoubleClick={true}
-          paneMoveable={true}
-        >
-          <MiniMap />
-          <Controls />
-          <Background color="#aaa" gap={16} />
-        </ReactFlow>
+            <MiniMap />
+            <Controls />
+            <Background color="#aaa" gap={16} />
+          </ReactFlow>
+        </div>
       </div>
     </div>
   );
@@ -270,4 +283,4 @@ const WrappedApp: React.FC = () => (
   </ReactFlowProvider>
 );
 
-export default WrappedApp
+export default WrappedApp;
