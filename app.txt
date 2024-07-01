@@ -4,23 +4,21 @@ import ReactFlow, {
   Controls,
   Background,
   addEdge,
-  useNodesState,
-  useEdgesState,
+  useNodes,
+  useEdges,
   ReactFlowProvider,
   Node,
   Edge,
   Connection,
-  NodeMouseHandler,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+  NodeMouseEventHandler,
+} from 'react-flow-renderer';
+import 'react-flow-renderer/dist/style.css';
 import axios from 'axios';
 import dagre from 'dagre';
 import {
   graphContainerStyles,
-  controlsStyles,
   controlsLabelStyles,
   controlsSelectStyles,
-  controlsInputStyles,
   reactflowWrapperStyles,
   navbarStyles,
 } from './styles';  // import the styles
@@ -66,22 +64,20 @@ const getLayoutedNodes = (nodes: Node[], edges: Edge[], direction = 'TB') => {
   });
 };
 
-const getNodeColor = (type: string) => {
-  switch (type) {
-    case 'input':
-      return '#FFD700'; // Gold
-    case 'output':
-      return '#FF6347'; // Tomato
-    case 'option':
-      return '#40E0D0'; // Turquoise
-    default:
-      return '#D3D3D3'; // Light Gray
+const getNodeColor = (node: Node) => {
+  const hasChildren = allNodes.some(n => n.data.parentNode === node.id);
+  if (!hasChildren) {
+    // Leaf node
+    return '#FF0000'; // Red
+  } else {
+    // Parent node
+    return '#00FF00'; // Green
   }
 };
 
 const App: React.FC = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
+  const [nodes, setNodes] = useNodes(initialNodes);
+  const [edges, setEdges] = useEdges(initialEdges);
   const [allNodes, setAllNodes] = useState<Node[]>([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
   const [direction, setDirection] = useState('TB');
@@ -105,7 +101,7 @@ const App: React.FC = () => {
           position: { x: 0, y: 0 },
           draggable: true,
           hidden: true,
-          style: { backgroundColor: getNodeColor(item.type || 'default') },
+          style: { backgroundColor: getNodeColor(item) },
         }));
 
         const processedEdges: Edge[] = data
@@ -142,7 +138,7 @@ const App: React.FC = () => {
     setEdges(prevEdges => [...prevEdges, ...newEdges]);
   }, [allNodes, setEdges]);
 
-  const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
+  const onNodeClick: NodeMouseEventHandler = useCallback((event, node) => {
     const childNodes = allNodes.filter(n => n.data.parentNode === node.id);
     if (childNodes.length > 0) {
       const hiddenNodes = childNodes.filter(n => n.hidden);
@@ -218,17 +214,27 @@ const App: React.FC = () => {
       </div>
       <div style={reactflowWrapperStyles}>
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
+          elements={nodes.concat(edges)}
+          onElementsRemove={() => {}}
           onConnect={onConnect}
-          fitView
+          onNodeDoubleClick={() => {}}
+          onElementClick={() => {}}
+          onNodeDragStop={() => {}}
+          onNodeMouseEnter={() => {}}
+          onNodeMouseLeave={() => {}}
+          onNodeContextMenu={() => {}}
+          onSelectionChange={() => {}}
+          onLoad={() => {}}
+          onMove={() => {}}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          zoomOnScroll={true}
+          zoomOnDoubleClick={true}
+          paneMoveable={true}
         >
-          <Controls />
           <MiniMap />
-          <Background variant="dots" gap={12} size={1} />
+          <Controls />
+          <Background color="#aaa" gap={16} />
         </ReactFlow>
       </div>
     </div>
