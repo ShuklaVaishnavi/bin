@@ -5,9 +5,9 @@ const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
     // Collapse the node
     currentExpandedNodes.delete(node.id);
 
-    // Remove edges connected to the collapsed node's children
+    // Remove edges directly connected to the collapsed node
     const edgesToKeep = edges.filter(
-      (e) => e.source !== node.id && e.target !== node.id
+      (e) => !(e.source === node.id || e.target === node.id)
     );
 
     setEdges(edgesToKeep);
