@@ -1,0 +1,19 @@
+import classNames from 'classnames';
+
+interface ComponentProps {
+  isActive: boolean;
+  isDisabled: boolean;
+}
+
+const MyComponent: React.FC<ComponentProps> = ({ isActive, isDisabled }) => {
+  const wrapperClasses = classNames('wrapper', {
+    'active': isActive,
+    'disabled': isDisabled,
+  });
+
+  return (
+    <div className={wrapperClasses}>
+      {/* Content */}
+    </div>
+  );
+};
