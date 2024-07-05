@@ -1,19 +1,71 @@
-import classNames from 'classnames';
+import React, { useState, useRef, useEffect } from 'react';
+import { useReactFlow, ReactFlowProvider } from 'reactflow';
+import 'reactflow/dist/style.css';
 
-interface ComponentProps {
-  isActive: boolean;
-  isDisabled: boolean;
-}
+const Minimap = () => {
+  const { viewport, fitView } = useReactFlow();
+  const minimapRef = useRef(null);
+  const [boxPosition, setBoxPosition] = useState({ x: 0, y: 0 });
 
-const MyComponent: React.FC<ComponentProps> = ({ isActive, isDisabled }) => {
-  const wrapperClasses = classNames('wrapper', {
-    'active': isActive,
-    'disabled': isDisabled,
-  });
+  const handleBoxDrag = (e) => {
+    const minimap = minimapRef.current;
+    const rect = minimap.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setBoxPosition({ x, y });
+
+    // Calculate the new viewport based on the box position and minimap scale
+    const newX = (x / rect.width) * viewport.zoom;
+    const newY = (y / rect.height) * viewport.zoom;
+    fitView({ x: newX, y: newY });
+  };
 
   return (
-    <div className={wrapperClasses}>
-      {/* Content */}
+    <div ref={minimapRef} className="minimap" style={{ position: 'relative', width: '200px', height: '200px', border: '1px solid black' }}>
+      {/* Minimap content */}
+      <div
+        className="minimap-box"
+        style={{
+          position: 'absolute',
+          width: '20px',
+          height: '20px',
+          border: '2px solid white',
+          backgroundColor: 'rgba(255, 255, 255, 0.3)',
+          top: boxPosition.y,
+          left: boxPosition.x,
+          cursor: 'move',
+        }}
+        onMouseDown={(e) => e.preventDefault()}
+        onMouseMove={(e) => handleBoxDrag(e)}
+      />
     </div>
   );
 };
+
+export default Minimap;
+
+
+
+
+import React from 'react';
+import ReactFlow, { ReactFlowProvider } from 'reactflow';
+import Minimap from './Minimap';
+import 'reactflow/dist/style.css';
+
+const initialElements = [
+  // Your elements here
+];
+
+const FlowComponent = () => {
+  return (
+    <ReactFlowProvider>
+      <div style={{ display: 'flex' }}>
+        <ReactFlow elements={initialElements} />
+        <Minimap />
+      </div>
+    </ReactFlowProvider>
+  );
+};
+
+export default FlowComponent;
