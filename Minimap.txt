@@ -1,16 +1,12 @@
-      import React, { useState, useRef, useCallback, useEffect } from 'react';
-import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow } from 'react-flow-renderer';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow, useUpdateNodeInternals } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
   const minimapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [transform, setTransform] = useState([0, 0, 1]); // Default transform state [x, y, zoom]
-  const { setViewport, fitView } = useReactFlow();
-
-  useEffect(() => {
-    fitView();
-  }, [fitView]);
+  const [transform, setTransform] = useState<[number, number, number]>([0, 0, 1]);
+  const { setViewport, zoomIn, zoomOut, fitView } = useReactFlow();
 
   const onMouseDown = () => {
     setDragging(true);
@@ -26,11 +22,11 @@ const CustomMinimap = () => {
 
       const minimapWidth = rect.width;
       const minimapHeight = rect.height;
-      const scaleX = transform[2] * (window.innerWidth / minimapWidth);
-      const scaleY = transform[2] * (window.innerHeight / minimapHeight);
+      const scaleX = window.innerWidth / minimapWidth;
+      const scaleY = window.innerHeight / minimapHeight;
 
-      const newX = (x * scaleX) - (window.innerWidth / 2);
-      const newY = (y * scaleY) - (window.innerHeight / 2);
+      const newX = (x * scaleX - window.innerWidth / 2) / transform[2];
+      const newY = (y * scaleY - window.innerHeight / 2) / transform[2];
 
       setViewport({ x: newX, y: newY, zoom: transform[2] });
     },
@@ -41,20 +37,23 @@ const CustomMinimap = () => {
     setDragging(false);
   };
 
-  // Mock function to update transform state
-  const updateTransform = () => {
-    const canvas = document.querySelector('.react-flow__viewport');
-    if (canvas) {
-      const { x, y, zoom } = canvas.getBoundingClientRect();
-      setTransform([x, y, zoom]);
+  const updateTransform = useCallback(() => {
+    const flowElement = document.querySelector('.react-flow__viewport') as HTMLDivElement;
+    if (flowElement) {
+      const transformValues = getComputedStyle(flowElement).transform.match(/matrix\((.*)\)/);
+      if (transformValues && transformValues[1]) {
+        const values = transformValues[1].split(',').map(parseFloat);
+        const newTransform: [number, number, number] = [values[4], values[5], values[0]];
+        setTransform(newTransform);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     updateTransform();
-    const interval = setInterval(updateTransform, 1000); // Update transform state every second
+    const interval = setInterval(updateTransform, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [updateTransform]);
 
   return (
     <div
@@ -69,7 +68,7 @@ const CustomMinimap = () => {
         width: 200,
         height: 150,
         border: '1px solid black',
-        zIndex: 999, // Ensure minimap is above other content
+        zIndex: 999,
       }}
     >
       <MiniMap nodeColor={(node) => 'blue'} />
