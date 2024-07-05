@@ -1,12 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow, useUpdateNodeInternals } from 'react-flow-renderer';
+import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
   const minimapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [transform, setTransform] = useState<[number, number, number]>([0, 0, 1]);
-  const { setViewport, zoomIn, zoomOut, fitView } = useReactFlow();
+  const { setViewport } = useReactFlow();
 
   const onMouseDown = () => {
     setDragging(true);
@@ -22,11 +22,11 @@ const CustomMinimap = () => {
 
       const minimapWidth = rect.width;
       const minimapHeight = rect.height;
-      const scaleX = window.innerWidth / minimapWidth;
-      const scaleY = window.innerHeight / minimapHeight;
+      const scaleX = minimapWidth / window.innerWidth;
+      const scaleY = minimapHeight / window.innerHeight;
 
-      const newX = (x * scaleX - window.innerWidth / 2) / transform[2];
-      const newY = (y * scaleY - window.innerHeight / 2) / transform[2];
+      const newX = (x / scaleX - window.innerWidth / 2 / transform[2]) * transform[2];
+      const newY = (y / scaleY - window.innerHeight / 2 / transform[2]) * transform[2];
 
       setViewport({ x: newX, y: newY, zoom: transform[2] });
     },
