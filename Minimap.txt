@@ -1,14 +1,14 @@
-import React, { useState, useRef, useCallback } from 'react';
-import ReactFlow, { ReactFlowProvider, MiniMap, useZoomPanHelper, useStoreState } from 'react-flow-renderer';
+ import React, { useState, useRef, useCallback } from 'react';
+import ReactFlow, { ReactFlowProvider, MiniMap, useStoreState, useStoreActions } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
   const minimapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const transform = useStoreState((state) => state.transform);
-  const { setCenter } = useZoomPanHelper();
+  const setViewport = useStoreActions((actions) => actions.setViewport);
 
-  const onMouseDown = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+  const onMouseDown = () => {
     setDragging(true);
   };
 
@@ -24,9 +24,9 @@ const CustomMinimap = () => {
       const newX = x * transform[2];
       const newY = y * transform[2];
 
-      setCenter(newX, newY, transform[2]);
+      setViewport({ x: newX, y: newY, zoom: transform[2] });
     },
-    [dragging, transform, setCenter]
+    [dragging, transform, setViewport]
   );
 
   const onMouseUp = () => {
@@ -58,31 +58,3 @@ const CustomMinimap = () => {
 };
 
 export default CustomMinimap;
-
-
-
-
-import React from 'react';
-import ReactFlow, { ReactFlowProvider } from 'react-flow-renderer';
-import CustomMinimap from './CustomMinimap';
-import 'react-flow-renderer/dist/style.css';
-
-const initialElements = [
-  { id: '1', type: 'input', data: { label: 'Node 1' }, position: { x: 250, y: 0 } },
-  { id: '2', data: { label: 'Node 2' }, position: { x: 100, y: 100 } },
-  { id: '3', data: { label: 'Node 3' }, position: { x: 400, y: 100 } },
-  { id: '4', type: 'output', data: { label: 'Node 4' }, position: { x: 250, y: 200 } },
-];
-
-const FlowComponent = () => {
-  return (
-    <ReactFlowProvider>
-      <div style={{ display: 'flex', height: '100vh' }}>
-        <ReactFlow elements={initialElements} style={{ flex: 1 }} />
-        <CustomMinimap />
-      </div>
-    </ReactFlowProvider>
-  );
-};
-
-export default FlowComponent;
