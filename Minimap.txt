@@ -1,12 +1,16 @@
-import React, { useState, useRef, useCallback } from 'react';
-import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow, useStoreState } from 'react-flow-renderer';
+      import React, { useState, useRef, useCallback, useEffect } from 'react';
+import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
   const minimapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
-  const { setViewport } = useReactFlow();
-  const transform = useStoreState((state) => state.transform);
+  const [transform, setTransform] = useState([0, 0, 1]); // Default transform state [x, y, zoom]
+  const { setViewport, fitView } = useReactFlow();
+
+  useEffect(() => {
+    fitView();
+  }, [fitView]);
 
   const onMouseDown = () => {
     setDragging(true);
@@ -22,8 +26,8 @@ const CustomMinimap = () => {
 
       const minimapWidth = rect.width;
       const minimapHeight = rect.height;
-      const scaleX = transform[2] * (minimapWidth / window.innerWidth);
-      const scaleY = transform[2] * (minimapHeight / window.innerHeight);
+      const scaleX = transform[2] * (window.innerWidth / minimapWidth);
+      const scaleY = transform[2] * (window.innerHeight / minimapHeight);
 
       const newX = (x * scaleX) - (window.innerWidth / 2);
       const newY = (y * scaleY) - (window.innerHeight / 2);
@@ -36,6 +40,21 @@ const CustomMinimap = () => {
   const onMouseUp = () => {
     setDragging(false);
   };
+
+  // Mock function to update transform state
+  const updateTransform = () => {
+    const canvas = document.querySelector('.react-flow__viewport');
+    if (canvas) {
+      const { x, y, zoom } = canvas.getBoundingClientRect();
+      setTransform([x, y, zoom]);
+    }
+  };
+
+  useEffect(() => {
+    updateTransform();
+    const interval = setInterval(updateTransform, 1000); // Update transform state every second
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div
@@ -57,8 +76,8 @@ const CustomMinimap = () => {
       <div
         style={{
           position: 'absolute',
-          top: `${-transform[1] / transform[2] * (200 / window.innerWidth)}px`,
-          left: `${-transform[0] / transform[2] * (150 / window.innerHeight)}px`,
+          top: `${-transform[1] / transform[2] * (150 / window.innerHeight)}px`,
+          left: `${-transform[0] / transform[2] * (200 / window.innerWidth)}px`,
           width: `${200 / transform[2]}px`,
           height: `${150 / transform[2]}px`,
           border: '2px solid white',
@@ -69,4 +88,4 @@ const CustomMinimap = () => {
   );
 };
 
-export default CustomMinimap
+export default CustomMinimap;
