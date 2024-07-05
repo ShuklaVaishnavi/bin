@@ -3,24 +3,24 @@ import ReactFlow, { ReactFlowProvider, MiniMap, useZoomPanHelper, useStoreState 
 import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
-  const minimapRef = useRef(null);
+  const minimapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const transform = useStoreState((state) => state.transform);
-  const { zoomTo, setCenter } = useZoomPanHelper();
+  const { setCenter } = useZoomPanHelper();
 
-  const onMouseDown = () => {
+  const onMouseDown = (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     setDragging(true);
   };
 
   const onMouseMove = useCallback(
-    (event) => {
+    (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
       if (!dragging) return;
 
-      const rect = minimapRef.current.getBoundingClientRect();
+      const rect = minimapRef.current!.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      const scale = rect.width / transform[2]; // Assuming the minimap width matches the viewport scale
+      const scale = rect.width / transform[2];
       const newX = x * transform[2];
       const newY = y * transform[2];
 
@@ -58,6 +58,8 @@ const CustomMinimap = () => {
 };
 
 export default CustomMinimap;
+
+
 
 
 import React from 'react';
