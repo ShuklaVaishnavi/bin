@@ -22,9 +22,12 @@ const CustomMinimap = () => {
 
       const minimapWidth = rect.width;
       const minimapHeight = rect.height;
+
+      // Calculate the position in the main canvas based on minimap coordinates
       const scaleX = minimapWidth / window.innerWidth;
       const scaleY = minimapHeight / window.innerHeight;
 
+      // Transform the minimap coordinates to main canvas coordinates
       const newX = (x / scaleX - window.innerWidth / 2 / transform[2]) * transform[2];
       const newY = (y / scaleY - window.innerHeight / 2 / transform[2]) * transform[2];
 
