@@ -1,68 +1,82 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useReactFlow, ReactFlowProvider } from 'reactflow';
-import 'reactflow/dist/style.css';
+import React, { useState, useRef, useCallback } from 'react';
+import ReactFlow, { ReactFlowProvider, MiniMap, useZoomPanHelper, useStoreState } from 'react-flow-renderer';
+import 'react-flow-renderer/dist/style.css';
 
-const Minimap = () => {
-  const { viewport, fitView } = useReactFlow();
+const CustomMinimap = () => {
   const minimapRef = useRef(null);
-  const [boxPosition, setBoxPosition] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const { transform } = useStoreState((state) => state);
+  const { zoomTo, setCenter } = useZoomPanHelper();
 
-  const handleBoxDrag = (e) => {
-    const minimap = minimapRef.current;
-    const rect = minimap.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  const onMouseDown = () => {
+    setDragging(true);
+  };
 
-    setBoxPosition({ x, y });
+  const onMouseMove = useCallback((event) => {
+    if (!dragging) return;
 
-    // Calculate the new viewport based on the box position and minimap scale
-    const newX = (x / rect.width) * viewport.zoom;
-    const newY = (y / rect.height) * viewport.zoom;
-    fitView({ x: newX, y: newY });
+    const rect = minimapRef.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const scale = rect.width / transform[2]; // Assuming the minimap width matches the viewport scale
+    const newX = x / scale;
+    const newY = y / scale;
+
+    setCenter(newX, newY, transform[2]);
+  }, [dragging, transform, setCenter]);
+
+  const onMouseUp = () => {
+    setDragging(false);
   };
 
   return (
-    <div ref={minimapRef} className="minimap" style={{ position: 'relative', width: '200px', height: '200px', border: '1px solid black' }}>
-      {/* Minimap content */}
+    <div
+      ref={minimapRef}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      style={{ width: 200, height: 150, position: 'relative', border: '1px solid black' }}
+    >
+      <MiniMap nodeColor={(node) => 'blue'} />
       <div
-        className="minimap-box"
         style={{
           position: 'absolute',
-          width: '20px',
-          height: '20px',
+          top: `${transform[1]}px`,
+          left: `${transform[0]}px`,
+          width: `${200 / transform[2]}px`,
+          height: `${150 / transform[2]}px`,
           border: '2px solid white',
-          backgroundColor: 'rgba(255, 255, 255, 0.3)',
-          top: boxPosition.y,
-          left: boxPosition.x,
           cursor: 'move',
         }}
-        onMouseDown={(e) => e.preventDefault()}
-        onMouseMove={(e) => handleBoxDrag(e)}
       />
     </div>
   );
 };
 
-export default Minimap;
+export default CustomMinimap;
 
 
 
 
 import React from 'react';
-import ReactFlow, { ReactFlowProvider } from 'reactflow';
-import Minimap from './Minimap';
-import 'reactflow/dist/style.css';
+import ReactFlow, { ReactFlowProvider } from 'react-flow-renderer';
+import CustomMinimap from './CustomMinimap';
+import 'react-flow-renderer/dist/style.css';
 
 const initialElements = [
-  // Your elements here
+  { id: '1', type: 'input', data: { label: 'Node 1' }, position: { x: 250, y: 0 } },
+  { id: '2', data: { label: 'Node 2' }, position: { x: 100, y: 100 } },
+  { id: '3', data: { label: 'Node 3' }, position: { x: 400, y: 100 } },
+  { id: '4', type: 'output', data: { label: 'Node 4' }, position: { x: 250, y: 200 } },
 ];
 
 const FlowComponent = () => {
   return (
     <ReactFlowProvider>
-      <div style={{ display: 'flex' }}>
-        <ReactFlow elements={initialElements} />
-        <Minimap />
+      <div style={{ display: 'flex', height: '100vh' }}>
+        <ReactFlow elements={initialElements} style={{ flex: 1 }} />
+        <CustomMinimap />
       </div>
     </ReactFlowProvider>
   );
