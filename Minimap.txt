@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { MiniMap, useReactFlow } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
@@ -29,8 +28,8 @@ const CustomMinimap = () => {
       const scaleY = window.innerHeight / minimapHeight;
 
       // Transform the minimap coordinates to main canvas coordinates
-      const newX = (x * scaleX - window.innerWidth / 2 / transform[2]) * transform[2];
-      const newY = (y * scaleY - window.innerHeight / 2 / transform[2]) * transform[2];
+      const newX = (x * scaleX - (window.innerWidth / 2) / transform[2]) * transform[2] + transform[0];
+      const newY = (y * scaleY - (window.innerHeight / 2) / transform[2]) * transform[2] + transform[1];
 
       setViewport({ x: newX, y: newY, zoom: transform[2] });
     },
@@ -73,6 +72,7 @@ const CustomMinimap = () => {
         height: 150,
         border: '1px solid black',
         zIndex: 999,
+        cursor: dragging ? 'grabbing' : 'grab',
       }}
     >
       <MiniMap nodeColor={(node) => 'blue'} />
