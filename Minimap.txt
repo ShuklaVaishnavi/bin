@@ -1,52 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import ReactFlow, { ReactFlowProvider, MiniMap, useReactFlow } from 'react-flow-renderer';
 import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
-  const [transform, setTransform] = useState([0, 0, 1]);
+  const minimapRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
   const { setViewport } = useReactFlow();
 
-  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+  const onMouseDown = () => {
+    setDragging(true);
+  };
 
-    const newX = x * transform[2];
-    const newY = y * transform[2];
+  const onMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+      if (!dragging) return;
 
-    setViewport({ x: newX, y: newY, zoom: transform[2] });
+      const rect = minimapRef.current!.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const newX = x * 2; // Adjust factor as needed
+      const newY = y * 2; // Adjust factor as needed
+
+      setViewport({ x: newX, y: newY, zoom: 2 }); // Adjust zoom level as needed
+    },
+    [dragging, setViewport]
+  );
+
+  const onMouseUp = () => {
+    setDragging(false);
   };
 
   return (
     <div
-      style={{ width: 200, height: 150, position: 'relative', border: '1px solid black' }}
-      onMouseMove={handleMouseMove}
+      ref={minimapRef}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      style={{
+        position: 'fixed',
+        bottom: 10,
+        right: 10,
+        width: 200,
+        height: 150,
+        border: '1px solid black',
+        zIndex: 999, // Ensure minimap is above other content
+      }}
     >
       <MiniMap nodeColor={(node) => 'blue'} />
       <div
         style={{
           position: 'absolute',
-          top: `${transform[1] / transform[2]}px`,
-          left: `${transform[0] / transform[2]}px`,
-          width: `${200 / transform[2]}px`,
-          height: `${150 / transform[2]}px`,
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
           border: '2px solid white',
-          cursor: 'move',
+          pointerEvents: 'none', // Allow events to pass through the minimap box
+          boxSizing: 'border-box',
         }}
       />
     </div>
   );
 };
 
-const FlowComponent = () => {
-  return (
-    <ReactFlowProvider>
-      <div style={{ display: 'flex', height: '100vh' }}>
-        <ReactFlow elements={[]} style={{ flex: 1 }} />
-        <CustomMinimap />
-      </div>
-    </ReactFlowProvider>
-  );
-};
-
-export default FlowComponent;
+export default CustomMinimap;
