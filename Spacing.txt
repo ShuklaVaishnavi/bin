@@ -1,34 +1,85 @@
-const calculatePositions = (nodeId: string, depth: number, position: { x: number; y: number }) => {
-  const node = nodeMap[nodeId];
-  if (!node) return;
-
-  // Calculate node width based on label size
-  const nodeWidth = Math.max(172, node.id.length * 12); // Adjust multiplier based on font and expected label size
-  const nodeHeight = 36;
-
-  node.position = { x: position.x, y: position.y };
-
-  const children = parentMap[nodeId];
-  if (children && children.length > 0) {
-    const totalSize = children.reduce((size, childId) => {
-      const childNode = nodeMap[childId];
-      const childNodeWidth = Math.max(172, childNode.id.length * 12); // Adjust multiplier based on font and expected label size
-      return size + calculateSubtreeSize(childId) + (direction === 'TB' || direction === 'BT' ? horizontalSpacing : verticalSpacing) + childNodeWidth;
-    }, direction === 'TB' || direction === 'BT' ? -horizontalSpacing : -verticalSpacing); // Subtract spacing to avoid extra space after the last child
-
-    let offset = (direction === 'TB' || direction === 'BT' ? position.x : position.y) - totalSize / 2 + (direction === 'TB' || direction === 'BT' ? nodeWidth / 2 : nodeHeight / 2);
-
-    children.forEach(childId => {
-      const childNode = nodeMap[childId];
-      const childSize = calculateSubtreeSize(childId);
-      const childNodeWidth = Math.max(172, childNode.id.length * 12); // Adjust multiplier based on font and expected label size
-
-      calculatePositions(childId, depth + 1, {
-        x: direction === 'TB' || direction === 'BT' ? offset + childSize / 2 - childNodeWidth / 2 : (direction === 'LR' ? position.x + childNodeWidth + verticalSpacing : position.x - childNodeWidth - verticalSpacing),
-        y: direction === 'LR' || direction === 'RL' ? offset + childSize / 2 - nodeHeight / 2 : (direction === 'TB' ? position.y + nodeHeight + verticalSpacing : position.y - nodeHeight - verticalSpacing)
-      });
-
-      offset += childSize + (direction === 'TB' || direction === 'BT' ? horizontalSpacing : verticalSpacing) + childNodeWidth;
-    });
-  }
+interface Node {
+  id: string;
+  position?: { x: number; y: number };
 }
+
+interface Edge {
+  source: string;
+  target: string;
+}
+
+const getTreeLayoutedNodes = (nodes: Node[], edges: Edge[]): Node[] => {
+  const verticalSpacing = 50;
+  const horizontalSpacing = 100;
+
+  // Build a map of node ids to node objects for quick lookup
+  const nodeMap: { [key: string]: Node } = {};
+  nodes.forEach(node => nodeMap[node.id] = node);
+
+  // Build a parent-children map from the edges
+  const parentMap: { [key: string]: string[] } = {};
+  edges.forEach(edge => {
+    if (!parentMap[edge.source]) {
+      parentMap[edge.source] = [];
+    }
+    parentMap[edge.source].push(edge.target);
+  });
+
+  // Function to calculate positions
+  const calculatePositions = (nodeId: string, depth: number, position: { x: number; y: number }) => {
+    const node = nodeMap[nodeId];
+    if (!node) return;
+
+    // Calculate node width based on label size
+    const nodeWidth = Math.max(172, node.id.length * 12); // Adjust multiplier based on font and expected label size
+    const nodeHeight = 36;
+
+    node.position = { x: position.x, y: position.y };
+
+    const children = parentMap[nodeId];
+    if (children && children.length > 0) {
+      const totalWidth = children.length * (nodeWidth + horizontalSpacing);
+      let offsetX = position.x - totalWidth / 2 + nodeWidth / 2;
+
+      children.forEach(childId => {
+        const childNode = nodeMap[childId];
+        const childNodeWidth = Math.max(172, childNode.id.length * 12); // Adjust multiplier based on font and expected label size
+
+        calculatePositions(childId, depth + 1, {
+          x: offsetX,
+          y: position.y + nodeHeight + verticalSpacing
+        });
+        offsetX += childNodeWidth + horizontalSpacing;
+      });
+    }
+  };
+
+  // Find the root node (assumed to be the one without incoming edges)
+  const rootNodeId = nodes.find(node => !edges.some(edge => edge.target === node.id))?.id;
+  if (rootNodeId) {
+    calculatePositions(rootNodeId, 0, { x: 0, y: 0 });
+  }
+
+  return nodes;
+};
+
+// Example usage
+const nodes: Node[] = [
+  { id: '1' },
+  { id: '2' },
+  { id: '3' },
+  { id: '4' },
+  { id: '5' },
+  { id: '6' }
+];
+
+const edges: Edge[] = [
+  { source: '1', target: '2' },
+  { source: '1', target: '3' },
+  { source: '2', target: '4' },
+  { source: '2', target: '5' },
+  { source: '3', target: '6' }
+];
+
+const layoutedNodes = getTreeLayoutedNodes(nodes, edges);
+console.log(layoutedNodes);
