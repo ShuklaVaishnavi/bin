@@ -4,8 +4,37 @@ import 'react-flow-renderer/dist/style.css';
 
 const CustomMinimap = () => {
   const minimapRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
   const [transform, setTransform] = useState<[number, number, number]>([0, 0, 1]);
   const { setViewport } = useReactFlow();
+
+  const onMouseDown = () => {
+    setDragging(true);
+  };
+
+  const onMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+      if (!dragging) return;
+
+      const rect = minimapRef.current!.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const minimapWidth = rect.width;
+      const minimapHeight = rect.height;
+
+      // Calculate the position in the main canvas based on minimap coordinates
+      const scaleX = minimapWidth / window.innerWidth;
+      const scaleY = minimapHeight / window.innerHeight;
+
+      // Transform the minimap coordinates to main canvas coordinates
+      const newX = (x / scaleX - window.innerWidth / 2) / transform[2] * -1 + transform[0];
+      const newY = (y / scaleY - window.innerHeight / 2) / transform[2] * -1 + transform[1];
+
+      setViewport({ x: newX, y: newY, zoom: transform[2] });
+    },
+    [dragging, transform, setViewport]
+  );
 
   const onClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -29,6 +58,10 @@ const CustomMinimap = () => {
     [transform, setViewport]
   );
 
+  const onMouseUp = () => {
+    setDragging(false);
+  };
+
   const updateTransform = useCallback(() => {
     const flowElement = document.querySelector('.react-flow__viewport') as HTMLDivElement;
     if (flowElement) {
@@ -50,6 +83,9 @@ const CustomMinimap = () => {
   return (
     <div
       ref={minimapRef}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
       onClick={onClick}
       style={{
         position: 'fixed',
@@ -59,7 +95,7 @@ const CustomMinimap = () => {
         height: 150,
         border: '1px solid black',
         zIndex: 999,
-        cursor: 'pointer',
+        cursor: dragging ? 'grabbing' : 'grab',
       }}
     >
       <MiniMap nodeColor={(node) => 'blue'} />
