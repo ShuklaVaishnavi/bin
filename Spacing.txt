@@ -1,0 +1,34 @@
+const calculatePositions = (nodeId: string, depth: number, position: { x: number; y: number }) => {
+  const node = nodeMap[nodeId];
+  if (!node) return;
+
+  // Calculate node width based on label size
+  const nodeWidth = Math.max(172, node.id.length * 12); // Adjust multiplier based on font and expected label size
+  const nodeHeight = 36;
+
+  node.position = { x: position.x, y: position.y };
+
+  const children = parentMap[nodeId];
+  if (children && children.length > 0) {
+    const totalSize = children.reduce((size, childId) => {
+      const childNode = nodeMap[childId];
+      const childNodeWidth = Math.max(172, childNode.id.length * 12); // Adjust multiplier based on font and expected label size
+      return size + calculateSubtreeSize(childId) + (direction === 'TB' || direction === 'BT' ? horizontalSpacing : verticalSpacing) + childNodeWidth;
+    }, direction === 'TB' || direction === 'BT' ? -horizontalSpacing : -verticalSpacing); // Subtract spacing to avoid extra space after the last child
+
+    let offset = (direction === 'TB' || direction === 'BT' ? position.x : position.y) - totalSize / 2 + (direction === 'TB' || direction === 'BT' ? nodeWidth / 2 : nodeHeight / 2);
+
+    children.forEach(childId => {
+      const childNode = nodeMap[childId];
+      const childSize = calculateSubtreeSize(childId);
+      const childNodeWidth = Math.max(172, childNode.id.length * 12); // Adjust multiplier based on font and expected label size
+
+      calculatePositions(childId, depth + 1, {
+        x: direction === 'TB' || direction === 'BT' ? offset + childSize / 2 - childNodeWidth / 2 : (direction === 'LR' ? position.x + childNodeWidth + verticalSpacing : position.x - childNodeWidth - verticalSpacing),
+        y: direction === 'LR' || direction === 'RL' ? offset + childSize / 2 - nodeHeight / 2 : (direction === 'TB' ? position.y + nodeHeight + verticalSpacing : position.y - nodeHeight - verticalSpacing)
+      });
+
+      offset += childSize + (direction === 'TB' || direction === 'BT' ? horizontalSpacing : verticalSpacing) + childNodeWidth;
+    });
+  }
+}
