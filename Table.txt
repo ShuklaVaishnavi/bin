@@ -1,0 +1,45 @@
+// app.tsx
+import React, { useState } from 'react';
+import TableInfoDrawer from './TableInfoDrawer';
+import ReactFlow, { ReactFlowProvider, addEdge, Background } from 'reactflow';
+import 'reactflow/dist/style.css';
+
+const App = () => {
+  const [selectedNode, setSelectedNode] = useState(null);
+
+  const onNodeClick = (event, node) => {
+    setSelectedNode(node.data.label);
+  };
+
+  return (
+    <div>
+      <ReactFlowProvider>
+        <ReactFlow onNodeClick={onNodeClick}>
+          {/* Your nodes and edges */}
+        </ReactFlow>
+        <TableInfoDrawer selectedNode={selectedNode} />
+      </ReactFlowProvider>
+    </div>
+  );
+};
+
+export default App
+
+
+
+
+// tableinfodrawer.tsx
+import React from 'react';
+
+const TableInfoDrawer = ({ selectedNode }) => {
+  return (
+    <div>
+      <h2>{selectedNode ? `Details for: ${selectedNode}` : 'Select a node to see details'}</h2>
+      <table>
+        {/* Your table content */}
+      </table>
+    </div>
+  );
+};
+
+export default TableInfoDrawer;
