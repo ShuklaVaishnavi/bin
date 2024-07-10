@@ -43,3 +43,67 @@ const TableInfoDrawer = ({ selectedNode }) => {
 };
 
 export default TableInfoDrawer;
+
+
+
+
+// app.tsx
+import React, { useState } from 'react';
+import TableInfoDrawer from './TableInfoDrawer';
+import ReactFlow, { ReactFlowProvider } from 'reactflow';
+import 'reactflow/dist/style.css';
+
+const App = () => {
+  const [selectedNodeInfo, setSelectedNodeInfo] = useState({
+    name: null,
+    graphDepth: null,
+    parentNode: null,
+  });
+
+  const onNodeClick = (event, node) => {
+    // Assuming node.data contains name, graphDepth, and parentNode info
+    setSelectedNodeInfo({
+      name: node.data.label,
+      graphDepth: node.data.graphDepth,
+      parentNode: node.data.parentNode,
+    });
+  };
+
+  return (
+    <div>
+      <ReactFlowProvider>
+        <ReactFlow onNodeClick={onNodeClick}>
+          {/* Your nodes and edges */}
+        </ReactFlow>
+        <TableInfoDrawer selectedNodeInfo={selectedNodeInfo} />
+      </ReactFlowProvider>
+    </div>
+  );
+};
+
+export default App;
+
+
+// tableinfodrawer.tsx
+import React from 'react';
+
+const TableInfoDrawer = ({ selectedNodeInfo }) => {
+  const { name, graphDepth, parentNode } = selectedNodeInfo;
+
+  return (
+    <div>
+      <h2>{name ? `Details for: ${name}` : 'Select a node to see details'}</h2>
+      {name && (
+        <div>
+          <p>Graph Depth: {graphDepth}</p>
+          <p>Parent Node: {parentNode}</p>
+        </div>
+      )}
+      <table>
+        {/* Your table content */}
+      </table>
+    </div>
+  );
+};
+
+export default TableInfoDrawer;
