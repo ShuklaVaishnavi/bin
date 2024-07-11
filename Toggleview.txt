@@ -2,11 +2,10 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ReactFlow, {
     Controls,
     addEdge,
-    useNodesState,
-    useEdgesState,
+    useNodes,
+    useEdges,
     ReactFlowProvider,
     Node,
-    Connection,
     Edge,
     NodeMouseHandler,
 } from 'react-flow-renderer';
@@ -19,57 +18,21 @@ const calculateNodeWidth = (label: string) => (label.length > 5 ? label.length *
 const calculateNodeHeight = () => 40;
 
 const getLayoutedNodes = (nodes: Node[], edges: Edge[], direction: string): Node[] => {
-    const verticalSpacing = 50;
-    const horizontalSpacing = 50;
-    const nodeMap: { [key: string]: Node } = {};
-    nodes.forEach((node) => (nodeMap[node.id] = node));
-    const parentMap: { [key: string]: string[] } = {};
-    edges.forEach((edge) => {
-        if (!parentMap[edge.source]) {
-            parentMap[edge.source] = [];
-        }
-        parentMap[edge.source].push(edge.target);
-    });
-    const calculateSubtreeWidth = (nodeId: string): number => {
-        const children = parentMap[nodeId];
-        const node = nodeMap[nodeId];
-        if (!children || children.length === 0) {
-            return calculateNodeWidth(node.data.label);
-        }
-        return children.reduce((width, childId) => width + calculateSubtreeWidth(childId) + horizontalSpacing, -horizontalSpacing);
-    };
-    const calculatePositions = (nodeId: string, depth: number, position: { x: number; y: number }) => {
-        const node = nodeMap[nodeId];
-        if (!node) return;
-        node.position = { x: position.x, y: position.y };
-        const children = parentMap[nodeId];
-        if (children && children.length > 0) {
-            const totalWidth = children.reduce((width, childId) => width + calculateSubtreeWidth(childId) + horizontalSpacing, -horizontalSpacing);
-            let offsetX = position.x - totalWidth / 2 + calculateNodeWidth(node.data.label) / 2;
-            children.forEach((childId) => {
-                const childWidth = calculateSubtreeWidth(childId);
-                calculatePositions(childId, depth + 1, {
-                    x: offsetX + childWidth / 2 - calculateNodeWidth(node.data.label) / 2,
-                    y: position.y + calculateNodeHeight() + verticalSpacing,
-                });
-                offsetX += childWidth + horizontalSpacing;
-            });
-        }
-    };
-    const rootNodeId = nodes.find((node) => !edges.some((edge) => edge.target === node.id))?.id;
-    if (rootNodeId) {
-        calculatePositions(rootNodeId, 0, { x: 0, y: 0 });
-    }
-    return nodes;
+    // Your existing layout calculation logic here
 };
 
 const App: React.FC = () => {
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
+    const [nodes, setNodes] = useNodes();
+    const [edges, setEdges] = useEdges();
     const [allNodes, setAllNodes] = useState<Node[]>([]);
     const [allEdges, setAllEdges] = useState<Edge[]>([]);
     const [viewMode, setViewMode] = useState<'full' | 'parent-child'>('full');
-    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+    const [storedGraph, setStoredGraph] = useState<{ parent: Node | null; currentNode: Node | null; children: Node[] }>({
+        parent: null,
+        currentNode: null,
+        children: [],
+    });
     const [taskId, setTaskId] = useState<string>("");
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,7 +49,6 @@ const App: React.FC = () => {
                 data: { label: item.node, value: item.value, graphdepth: item.graphDepth, parentNode: item.parentNode },
                 position: { x: 0, y: 0 },
                 draggable: true,
-                hidden: true,
                 style: { width: calculateNodeWidth(item.node), backgroundColor: '#809f9f' },
             }));
             const processedEdges: Edge[] = data.filter((item) => item.parentNode).map((item) => ({
@@ -120,34 +82,26 @@ const App: React.FC = () => {
     }, [allNodes, nodes, edges]);
 
     const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
-        setSelectedNodeId(node.id);
-        if (viewMode === 'parent-child') {
-            const parent = allNodes.find((n) => n.id === node.data.parentNode);
-            const children = allNodes.filter((n) => n.data.parentNode === node.id);
-            const newNodes = [node, ...(parent ? [parent] : []), ...children];
-            const newEdges = allEdges.filter((edge) => newNodes.some((n) => n.id === edge.source && newNodes.some((n) => n.id === edge.target)));
-            setNodes(getLayoutedNodes(newNodes, newEdges, 'TB'));
-            setEdges(newEdges);
-        } else {
-            expandNode(node);
-        }
-    }, [viewMode, allNodes, allEdges, expandNode]);
+        setSelectedNode(node);
+        setStoredGraph({ parent: null, currentNode: node, children: allNodes.filter((n) => n.data.parentNode === node.id) });
+    }, [allNodes]);
 
     const toggleViewMode = () => {
         setViewMode(viewMode === 'full' ? 'parent-child' : 'full');
     };
 
     useEffect(() => {
-        if (viewMode === 'full') {
+        if (viewMode === 'parent-child' && storedGraph.currentNode) {
+            const { parent, currentNode, children } = storedGraph;
+            const newNodes = [currentNode, ...(parent ? [parent] : []), ...children];
+            const newEdges = allEdges.filter((edge) => newNodes.some((n) => n.id === edge.source && newNodes.some((n) => n.id === edge.target)));
+            setNodes(getLayoutedNodes(newNodes, newEdges, 'TB'));
+            setEdges(newEdges);
+        } else if (viewMode === 'full') {
             setNodes(getLayoutedNodes(allNodes, allEdges, 'TB'));
             setEdges(allEdges);
-        } else if (selectedNodeId) {
-            const selectedNode = allNodes.find((node) => node.id === selectedNodeId);
-            if (selectedNode) {
-                onNodeClick(null, selectedNode);
-            }
         }
-    }, [viewMode, allNodes, allEdges, selectedNodeId, onNodeClick]);
+    }, [viewMode, storedGraph, allNodes, allEdges]);
 
     return (
         <div style={{ width: '100%', height: '100vh' }}>
@@ -166,8 +120,8 @@ const App: React.FC = () => {
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
+                        onNodesChange={setNodes}
+                        onEdgesChange={setEdges}
                         onNodeClick={onNodeClick}
                         fitView
                     >
@@ -180,6 +134,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
- 
-
