@@ -1,0 +1,104 @@
+// app.tsx
+import React, { useState } from 'react';
+import Navbar from './components/Navbar';
+import ReactFlowComponent from './components/ReactFlowComponent';
+
+const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'full' | 'parent-child'>('full'); // default to full view
+
+  const toggleViewMode = () => {
+    setViewMode((prevMode) => (prevMode === 'full' ? 'parent-child' : 'full'));
+  };
+
+  return (
+    <div>
+      <Navbar toggleViewMode={toggleViewMode} viewMode={viewMode} />
+      <ReactFlowComponent viewMode={viewMode} />
+    </div>
+  );
+};
+
+export default App;
+
+
+
+// components/Navbar.tsx
+import React from 'react';
+
+interface NavbarProps {
+  toggleViewMode: () => void;
+  viewMode: 'full' | 'parent-child';
+}
+
+const Navbar: React.FC<NavbarProps> = ({ toggleViewMode, viewMode }) => {
+  return (
+    <nav>
+      <button onClick={toggleViewMode}>
+        {viewMode === 'full' ? 'Switch to Parent-Child View' : 'Switch to Full View'}
+      </button>
+    </nav>
+  );
+};
+
+export default Navbar;
+
+
+
+// components/ReactFlowComponent.tsx
+import React, { useState, useEffect } from 'react';
+import ReactFlow, { ReactFlowProvider, Node, Edge, OnLoadParams } from 'reactflow';
+
+interface ReactFlowComponentProps {
+  viewMode: 'full' | 'parent-child';
+}
+
+const ReactFlowComponent: React.FC<ReactFlowComponentProps> = ({ viewMode }) => {
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [clickedNode, setClickedNode] = useState<Node | null>(null);
+
+  useEffect(() => {
+    // Fetch and set the initial nodes and edges here
+    // Example: setNodes(initialNodes);
+    // Example: setEdges(initialEdges);
+  }, []);
+
+  const onNodeClick = (event: React.MouseEvent, node: Node) => {
+    setClickedNode(node);
+    if (viewMode === 'parent-child') {
+      // Logic to set nodes and edges for the parent-child view
+      const parentNode = getParentNode(node);
+      const childNodes = getChildNodes(node);
+
+      setNodes([parentNode, node, ...childNodes]);
+      setEdges([...getEdgesForParentChildView(parentNode, node, childNodes)]);
+    }
+  };
+
+  const getParentNode = (node: Node): Node | null => {
+    // Logic to find the parent node of the clicked node
+    return null; // Implement this logic based on your data structure
+  };
+
+  const getChildNodes = (node: Node): Node[] => {
+    // Logic to find the child nodes of the clicked node
+    return []; // Implement this logic based on your data structure
+  };
+
+  const getEdgesForParentChildView = (parentNode: Node | null, node: Node, childNodes: Node[]): Edge[] => {
+    // Logic to find the edges for the parent-child view
+    return []; // Implement this logic based on your data structure
+  };
+
+  return (
+    <ReactFlowProvider>
+      <ReactFlow
+        nodes={viewMode === 'full' ? nodes : nodes.filter(n => /* filter logic for parent-child view */ true)}
+        edges={viewMode === 'full' ? edges : edges.filter(e => /* filter logic for parent-child view */ true)}
+        onNodeClick={onNodeClick}
+      />
+    </ReactFlowProvider>
+  );
+};
+
+export default ReactFlowComponent;
