@@ -1,70 +1,75 @@
-import { ToolkitTheme } from "lib/web/ui-toolkit/theme";
-import { AppFrame } from "lib/web/app-frame";
 import React, { useState, useCallback, useEffect } from 'react';
 import ReactFlow, {
     Controls,
-    addEdge, useNodesState, useEdgesState, ReactFlowProvider, Node, Connection, NodeMouseHandler, Edge,
+    addEdge,
+    useNodesState,
+    useEdgesState,
+    ReactFlowProvider,
+    Node,
+    Connection,
+    Edge,
+    NodeMouseHandler,
 } from 'react-flow-renderer';
-import 'react-flow-renderer/dist/style.css';
 import axios from 'axios';
-
-// Define your styles and other constants here
-const graphContainerStyles = { /* Your styles here */ };
-const navbarStyles = { /* Your styles here */ };
-const controlsLabelStyles = { /* Your styles here */ };
-const controlsSelectStyles = { /* Your styles here */ };
-const controlsInputStyles = { /* Your styles here */ };
-const buttonStyles = { /* Your styles here */ };
-const reactflowWrapperStyles = { /* Your styles here */ };
-const controlsStyle = { /* Your styles here */ };
-
-// Define NodeData interface
-export interface NodeData {
-    node: string;
-    type?: string;
-    value?: string;
-    name?: string;
-    graphDepth: string;
-    parentNode?: string | null;
-}
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
-const calculateNodeWidth = (label: string) => {
-    return label.length > 5 ? label.length * 13 + 40 : 50;
-};
+const calculateNodeWidth = (label: string) => (label.length > 5 ? label.length * 13 + 40 : 50);
+const calculateNodeHeight = () => 40;
 
-const calculateNodeHeight = () => {
-    return 40; // Fixed node height
-};
-
-// Layout functions (getLayoutedNodes, calculatePositions, etc.)
-// ...
-
-const getNodeColor = (type: string) => {
-    switch (type) {
-        case 'leaf':
-            return "#D6F8DB";
-        default:
-            return "#809F9F";
+const getLayoutedNodes = (nodes: Node[], edges: Edge[], direction: string): Node[] => {
+    const verticalSpacing = 50;
+    const horizontalSpacing = 50;
+    const nodeMap: { [key: string]: Node } = {};
+    nodes.forEach((node) => (nodeMap[node.id] = node));
+    const parentMap: { [key: string]: string[] } = {};
+    edges.forEach((edge) => {
+        if (!parentMap[edge.source]) {
+            parentMap[edge.source] = [];
+        }
+        parentMap[edge.source].push(edge.target);
+    });
+    const calculateSubtreeWidth = (nodeId: string): number => {
+        const children = parentMap[nodeId];
+        const node = nodeMap[nodeId];
+        if (!children || children.length === 0) {
+            return calculateNodeWidth(node.data.label);
+        }
+        return children.reduce((width, childId) => width + calculateSubtreeWidth(childId) + horizontalSpacing, -horizontalSpacing);
+    };
+    const calculatePositions = (nodeId: string, depth: number, position: { x: number; y: number }) => {
+        const node = nodeMap[nodeId];
+        if (!node) return;
+        node.position = { x: position.x, y: position.y };
+        const children = parentMap[nodeId];
+        if (children && children.length > 0) {
+            const totalWidth = children.reduce((width, childId) => width + calculateSubtreeWidth(childId) + horizontalSpacing, -horizontalSpacing);
+            let offsetX = position.x - totalWidth / 2 + calculateNodeWidth(node.data.label) / 2;
+            children.forEach((childId) => {
+                const childWidth = calculateSubtreeWidth(childId);
+                calculatePositions(childId, depth + 1, {
+                    x: offsetX + childWidth / 2 - calculateNodeWidth(node.data.label) / 2,
+                    y: position.y + calculateNodeHeight() + verticalSpacing,
+                });
+                offsetX += childWidth + horizontalSpacing;
+            });
+        }
+    };
+    const rootNodeId = nodes.find((node) => !edges.some((edge) => edge.target === node.id))?.id;
+    if (rootNodeId) {
+        calculatePositions(rootNodeId, 0, { x: 0, y: 0 });
     }
-}
+    return nodes;
+};
 
 const App: React.FC = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
     const [allNodes, setAllNodes] = useState<Node[]>([]);
     const [allEdges, setAllEdges] = useState<Edge[]>([]);
-    const [direction, setDirection] = useState('TB');
-    const [selectedParentNode, setSelectedParentNode] = useState<string>("");
-    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-    const [highlightedNode, setHighlightedNode] = useState<string | null>(null);
-    const [selectedNodeData, setSelectedNodeData] = useState<NodeData[]>([]);
-    const [apiData, setApiData] = useState([]);
+    const [viewMode, setViewMode] = useState<'full' | 'parent-child'>('full');
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-    const [toolTip, setToolTip] = useState<{ visible: boolean, content: string, position: { x: number, y: number } } | null>(null);
-    const [viewMode, setViewMode] = useState('full'); // State for toggle button
     const [taskId, setTaskId] = useState<string>("");
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,45 +79,29 @@ const App: React.FC = () => {
     const fetchNodes = async () => {
         try {
             const response = await axios.get<NodeData[]>("http://localhost:8180/swagger/getson", { params: { taskId: taskId } });
-            setApiData(response.data);
             const data = response.data;
-            let processedNodes: Node[] = data.map((item) => ({
+            const processedNodes: Node[] = data.map((item) => ({
                 id: item.node,
-                type: item.type,
-                data: {
-                    label: item.node,
-                    value: item.value,
-                    graphdepth: item.graphDepth,
-                },
-                parentNode: item.parentNode,
+                type: item.type || 'default',
+                data: { label: item.node, value: item.value, graphdepth: item.graphDepth, parentNode: item.parentNode },
                 position: { x: 0, y: 0 },
                 draggable: true,
                 hidden: true,
-                style: {
-                    width: item.node.length > 5 ? item.node.length * 10 : 100,
-                    backgroundColor: getNodeColor(item.type),
-                }
+                style: { width: calculateNodeWidth(item.node), backgroundColor: '#809f9f' },
             }));
-            const processedEdges: Edge[] = data.filter((item) => item.parentNode)
-                .map((item) => ({
-                    id: `${item.parentNode}-${item.node}`,
-                    source: item.parentNode as string,
-                    target: item.node,
-                }));
+            const processedEdges: Edge[] = data.filter((item) => item.parentNode).map((item) => ({
+                id: `${item.parentNode}-${item.node}`,
+                source: item.parentNode as string,
+                target: item.node,
+            }));
             setAllNodes(processedNodes);
             setAllEdges(processedEdges);
-            setNodes(processedNodes.map((node) => ({
-                ...node,
-                hidden: false,
-            })));
+            setNodes(processedNodes.map((node) => ({ ...node, hidden: false })));
+            setEdges(processedEdges);
         } catch (error) {
             console.error('Error fetching node data', error);
         }
     };
-
-    useEffect(() => {
-        fetchNodes();
-    }, [taskId]);
 
     const expandNode = useCallback((node: Node) => {
         const childNodes = allNodes.filter((n) => n.data.parentNode === node.id);
@@ -120,145 +109,60 @@ const App: React.FC = () => {
             const newNodes = [...nodes];
             const newEdges = [...edges];
             childNodes.forEach((child) => {
-                const len = child.data.label.length > 5 ? child.data.label.length * 10 : 100;
-                newNodes.push({
-                    ...child,
-                    position: { x: node.position.x + Math.random() * 200, y: node.position.y + 100 },
-                    hidden: false,
-                    style: { width: len, backgroundColor: getNodeColor(allNodes.filter((n) => n.data.parentNode === child.id).length ? "leaf" : ""), },
-                });
-                newEdges.push({
-                    id: `${node.id}-${child.id}`,
-                    source: node.id,
-                    target: child.id,
-                    type: 'bezier',
-                    style: { strokeWidth: 1, stroke: "#363636" },
-                    animated: false,
-                });
+                const len = calculateNodeWidth(child.data.label);
+                const position = { x: node.position.x + Math.random() * 200, y: node.position.y + 100 };
+                newNodes.push({ ...child, position, hidden: false, style: { width: len, backgroundColor: '#809f9f' } });
+                newEdges.push({ id: `${node.id}-${child.id}`, source: node.id, target: child.id, type: 'bezier', style: { strokeWidth: 1, stroke: '#363636' } });
             });
-            setNodes(newNodes);
+            setNodes(getLayoutedNodes(newNodes, newEdges, 'TB'));
             setEdges(newEdges);
         }
-    }, [allNodes, nodes, edges, setNodes, setEdges]);
+    }, [allNodes, nodes, edges]);
 
-    const onNodeClick = useCallback((event, node) => {
-        const selectedNodeData = apiData.filter((row: NodeData) => row.node === node.data.label);
-        const currentExpandedNodes = new Set(expandedNodes);
-
-        if (currentExpandedNodes.has(node.id)) {
-            currentExpandedNodes.delete(node.id);
+    const onNodeClick: NodeMouseHandler = useCallback((event, node) => {
+        setSelectedNodeId(node.id);
+        if (viewMode === 'parent-child') {
+            const parent = allNodes.find((n) => n.id === node.data.parentNode);
+            const children = allNodes.filter((n) => n.data.parentNode === node.id);
+            const newNodes = [node, ...(parent ? [parent] : []), ...children];
+            const newEdges = allEdges.filter((edge) => newNodes.some((n) => n.id === edge.source && newNodes.some((n) => n.id === edge.target)));
+            setNodes(getLayoutedNodes(newNodes, newEdges, 'TB'));
+            setEdges(newEdges);
         } else {
-            currentExpandedNodes.add(node.id);
             expandNode(node);
         }
-        setExpandedNodes(currentExpandedNodes);
-        setSelectedNodeData(selectedNodeData);
-        setSelectedNodeId(node.id);
-    }, [apiData, expandedNodes, expandNode]);
-
-    const handleParentNodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const selectedNodeId = e.target.value;
-        setSelectedParentNode(selectedNodeId);
-        const selectedNode = allNodes.find((node) => node.id === selectedNodeId);
-        if (selectedNode) {
-            setNodes([{ ...selectedNode, hidden: false }]);
-            setEdges([]);
-        }
-    };
+    }, [viewMode, allNodes, allEdges, expandNode]);
 
     const toggleViewMode = () => {
         setViewMode(viewMode === 'full' ? 'parent-child' : 'full');
-        if (viewMode === 'parent-child' && selectedNodeId) {
-            showParentChildView(selectedNodeId);
-        }
-    };
-
-    const showParentChildView = (nodeId: string) => {
-        const node = allNodes.find((n) => n.id === nodeId);
-        if (!node) return;
-
-        const parentNode = allNodes.find((n) => n.id === node.data.parentNode);
-        const childNodes = allNodes.filter((n) => n.data.parentNode === nodeId);
-
-        const newNodes = [];
-        const newEdges = [];
-
-        if (parentNode) {
-            newNodes.push(parentNode);
-        }
-        newNodes.push(node);
-        childNodes.forEach((child) => {
-            newNodes.push(child);
-            newEdges.push({
-                id: `${node.id}-${child.id}`,
-                source: node.id,
-                target: child.id,
-                type: 'bezier',
-                style: { strokeWidth: 1, stroke: "#363636" },
-                animated: false,
-            });
-        });
-        setNodes(newNodes.map((n) => ({ ...n, hidden: false })));
-        setEdges(newEdges);
     };
 
     useEffect(() => {
-        if (viewMode === 'parent-child' && selectedNodeId) {
-            showParentChildView(selectedNodeId);
-        } else if (viewMode === 'full') {
-            setNodes(allNodes);
+        if (viewMode === 'full') {
+            setNodes(getLayoutedNodes(allNodes, allEdges, 'TB'));
             setEdges(allEdges);
+        } else if (selectedNodeId) {
+            const selectedNode = allNodes.find((node) => node.id === selectedNodeId);
+            if (selectedNode) {
+                onNodeClick(null, selectedNode);
+            }
         }
-    }, [viewMode, selectedNodeId]);
+    }, [viewMode, allNodes, allEdges, selectedNodeId, onNodeClick]);
 
     return (
-        <div style={graphContainerStyles}>
-            <div style={navbarStyles}>
-                <label style={controlsLabelStyles}>
-                    Direction:
-                    <select
-                        style={controlsSelectStyles}
-                        value={direction}
-                        onChange={(e) => setDirection(e.target.value)}
-                    >
-                        <option value="TB">Top-Bottom</option>
-                        <option value="BT">Bottom-Top</option>
-                        <option value="LR">Left-Right</option>
-                        <option value="RL">Right-Left</option>
-                    </select>
-                </label>
-                <label style={controlsLabelStyles}>
+        <div style={{ width: '100%', height: '100vh' }}>
+            <div style={{ display: 'flex', padding: '10px', background: '#f0f0f0' }}>
+                <label>
                     Task ID:
-                    <input
-                        style={controlsInputStyles}
-                        placeholder="Enter Task ID"
-                        type="text"
-                        value={taskId}
-                        onChange={handleInputChange}
-                    />
-                    <button onClick={fetchNodes} style={buttonStyles}>Fetch Nodes</button>
+                    <input type="text" value={taskId} onChange={handleInputChange} />
                 </label>
-                <button onClick={toggleViewMode} style={buttonStyles}>
+                <button onClick={fetchNodes}>Fetch Nodes</button>
+                <button onClick={toggleViewMode}>
                     {viewMode === 'full' ? 'Switch to Parent-Child View' : 'Switch to Full View'}
                 </button>
-                <label style={controlsLabelStyles}>
-                    Parent Node:
-                    <select
-                        style={controlsSelectStyles}
-                        value={selectedParentNode}
-                        onChange={handleParentNodeChange}
-                    >
-                        <option value="">Select Parent Node</option>
-                        {allNodes.map((node) => (
-                            <option key={node.id} value={node.id}>
-                                {node.data.label}
-                            </option>
-                        ))}
-                    </select>
-                </label>
             </div>
             <ReactFlowProvider>
-                <div style={reactflowWrapperStyles}>
+                <div style={{ width: '100%', height: 'calc(100vh - 50px)' }}>
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
@@ -267,23 +171,15 @@ const App: React.FC = () => {
                         onNodeClick={onNodeClick}
                         fitView
                     >
-                        <Controls style={controlsStyle} />
+                        <Controls />
                     </ReactFlow>
                 </div>
             </ReactFlowProvider>
-            {selectedNodeId && (
-                <div>
-                    <h3>Selected Node: {selectedNodeId}</h3>
-                    <ul>
-                        {selectedNodeData.map((data, index) => (
-                            <li key={index}>{data.node}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
         </div>
     );
 };
 
 export default App;
+
+ 
 
