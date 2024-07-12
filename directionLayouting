@@ -1,1 +1,103 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import ReactFlow, { Handle, Position, Node, Edge, ReactFlowProvider, addEdge } from 'reactflow';
+import 'reactflow/dist/style.css';
 
+const CustomNodeComponent = ({ data }: { data: { label: string } }) => (
+  <div className="custom-node">
+    {data.label}
+    <Handle type="source" position={Position.Right} id="right" style={{ background: '#555' }} />
+    <Handle type="source" position={Position.Left} id="left" style={{ background: '#555' }} />
+    <Handle type="target" position={Position.Left} id="left" style={{ background: '#555' }} />
+    <Handle type="target" position={Position.Right} id="right" style={{ background: '#555' }} />
+  </div>
+);
+
+const nodeTypes = {
+  customNode: CustomNodeComponent,
+};
+
+type Direction = 'Top-Bottom' | 'Bottom-Top' | 'Left-Right' | 'Right-Left';
+
+const createEdge = (sourceId: string, targetId: string, direction: Direction): Edge => {
+  let sourceHandle: string | null = null;
+  let targetHandle: string | null = null;
+
+  switch (direction) {
+    case 'Left-Right':
+      sourceHandle = 'right';
+      targetHandle = 'left';
+      break;
+    case 'Right-Left':
+      sourceHandle = 'left';
+      targetHandle = 'right';
+      break;
+    default:
+      sourceHandle = null;
+      targetHandle = null;
+  }
+
+  return {
+    id: `${sourceId}-${targetId}`,
+    source: sourceId,
+    target: targetId,
+    sourceHandle: sourceHandle || undefined,
+    targetHandle: targetHandle || undefined,
+  };
+};
+
+const calculatePositions = (
+  nodeId: string,
+  depth: number,
+  position: { x: number; y: number },
+  direction: Direction
+) => {
+  // Implement your positioning logic here based on the direction
+};
+
+const App = () => {
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [direction, setDirection] = useState<Direction>('Top-Bottom');
+
+  useEffect(() => {
+    // Example nodes initialization
+    const exampleNodes: Node[] = [
+      { id: '1', data: { label: 'Node 1' }, position: { x: 0, y: 0 }, type: 'customNode' },
+      { id: '2', data: { label: 'Node 2' }, position: { x: 100, y: 100 }, type: 'customNode' },
+    ];
+
+    // Example edges initialization based on direction
+    const exampleEdges: Edge[] = [
+      createEdge('1', '2', direction)
+    ];
+
+    setNodes(exampleNodes);
+    setEdges(exampleEdges);
+  }, [direction]);
+
+  const onNodesChange = useCallback((changes) => setNodes((nds) => addEdge(changes, nds)), []);
+  const onEdgesChange = useCallback((changes) => setEdges((eds) => addEdge(changes, eds)), []);
+
+  return (
+    <div style={{ height: '100vh' }}>
+      <div>
+        <button onClick={() => setDirection('Left-Right')}>Left-Right</button>
+        <button onClick={() => setDirection('Right-Left')}>Right-Left</button>
+        <button onClick={() => setDirection('Top-Bottom')}>Top-Bottom</button>
+        <button onClick={() => setDirection('Bottom-Top')}>Bottom-Top</button>
+      </div>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          fitView
+        />
+      </ReactFlowProvider>
+    </div>
+  );
+};
+
+export default App;
