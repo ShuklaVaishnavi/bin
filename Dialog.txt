@@ -1,0 +1,87 @@
+import React, { useState, useEffect } from 'react';
+import { useHistory } from 'react-router-dom';
+
+const YourComponent: React.FC = () => {
+  const history = useHistory();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({ input1: '', input2: '' }); // Add your inputs here
+  const [isFormValid, setIsFormValid] = useState(false);
+
+  useEffect(() => {
+    // Check if all inputs are filled
+    const allInputsFilled = Object.values(formData).every(value => value.trim() !== '');
+    setIsFormValid(allInputsFilled);
+  }, [formData]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prevState => ({ ...prevState, [name]: value }));
+  };
+
+  const handleOpenDialog = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+  };
+
+  const handleSubmit = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      handleCloseDialog();
+      history.push('/regressionconfig');
+    }, 2000); // Simulate async action with timeout
+  };
+
+  return (
+    <div>
+      <button onClick={handleOpenDialog}>
+        Open Dialog
+      </button>
+      {isDialogOpen && (
+        <div className="dialog">
+          <div className="dialog-content">
+            {isLoading ? (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)'
+              }}>
+                <div className="spinner">Loading...</div> {/* Replace with your spinner */}
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  name="input1"
+                  value={formData.input1}
+                  onChange={handleInputChange}
+                  placeholder="Input 1"
+                />
+                <input
+                  type="text"
+                  name="input2"
+                  value={formData.input2}
+                  onChange={handleInputChange}
+                  placeholder="Input 2"
+                />
+                <button onClick={handleSubmit} disabled={!isFormValid}>
+                  Submit
+                </button>
+                <button onClick={handleCloseDialog}>
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default YourComponent
