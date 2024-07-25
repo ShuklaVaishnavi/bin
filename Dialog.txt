@@ -58,3 +58,106 @@ const MyForm: React.FC = () => {
 };
 
 export default MyForm;
+
+
+
+
+
+import React, { useState, useEffect } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+
+// Example RadioButtonGroup component
+const RadioButtonGroup: React.FC<{ onChange: (value: string) => void }> = ({ onChange }) => (
+  <div>
+    <input type="radio" name="group" value="option1" onChange={(e) => onChange(e.target.value)} /> Option 1
+    <input type="radio" name="group" value="option2" onChange={(e) => onChange(e.target.value)} /> Option 2
+  </div>
+);
+
+const MyForm: React.FC = () => {
+  const [input1, setInput1] = useState('');
+  const [input2, setInput2] = useState('');
+  const [input3, setInput3] = useState('');
+  const [input4, setInput4] = useState('');
+  const [input5, setInput5] = useState<Date | null>(null);
+  const [input6, setInput6] = useState<Date | null>(null);
+  const [radioValue, setRadioValue] = useState('');
+  const [allFieldsFilled, setAllFieldsFilled] = useState(false);
+
+  const checkAllFieldsFilled = () => {
+    if (radioValue === 'var') {
+      setAllFieldsFilled(!!(input1 && input2 && input3 && input4 && input5 && input6));
+    } else {
+      setAllFieldsFilled(!!(input1 && input2 && input3));
+    }
+  };
+
+  useEffect(() => {
+    checkAllFieldsFilled();
+  }, [input1, input2, input3, input4, input5, input6, radioValue]);
+
+  const handleRadioChange = (value: string) => {
+    setRadioValue(value);
+    checkAllFieldsFilled();
+  };
+
+  return (
+    <form>
+      <div>
+        <label>
+          Input 1:
+          <input type="text" value={input1} onChange={(e) => setInput1(e.target.value)} />
+        </label>
+      </div>
+      <div>
+        <label>
+          Input 2:
+          <input type="text" value={input2} onChange={(e) => setInput2(e.target.value)} />
+        </label>
+      </div>
+      <div>
+        <label>
+          Input 3:
+          <input type="text" value={input3} onChange={(e) => setInput3(e.target.value)} />
+        </label>
+      </div>
+      <div>
+        <label>
+          Input 4:
+          <input type="text" value={input4} onChange={(e) => setInput4(e.target.value)} />
+        </label>
+      </div>
+      <div>
+        <label>
+          Input 5 (Date):
+          <DatePicker
+            customInput={<button>{input5 ? input5.toDateString() : 'Select Date'}</button>}
+            selected={input5}
+            onChange={(date: Date | null) => setInput5(date)}
+            dateFormat="yyyy/MM/dd"
+          />
+        </label>
+      </div>
+      <div>
+        <label>
+          Input 6 (Date):
+          <DatePicker
+            customInput={<button>{input6 ? input6.toDateString() : 'Select Date'}</button>}
+            selected={input6}
+            onChange={(date: Date | null) => setInput6(date)}
+            dateFormat="yyyy/MM/dd"
+          />
+        </label>
+      </div>
+      <div>
+        <RadioButtonGroup onChange={handleRadioChange} />
+      </div>
+      <button type="submit" disabled={!allFieldsFilled}>
+        Submit
+      </button>
+    </form>
+  );
+};
+
+export default MyForm;
