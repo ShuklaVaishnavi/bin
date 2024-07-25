@@ -1,0 +1,24 @@
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
+import YourComponent from './YourComponent'; // Adjust the path as necessary
+import RegressionConfig from './RegressionConfig'; // Adjust the path as necessary
+import Inventory from './Inventory'; // Adjust the path as necessary
+
+const App: React.FC = () => (
+  <Router>
+    <Switch>
+      <Route path="/regressionconfig" component={RegressionConfig} />
+      <Route path="/inventory" component={Inventory} />
+      {/* Redirect from root to /inventory */}
+      <Route exact path="/">
+        <Redirect to="/inventory" />
+      </Route>
+      {/* Add other routes here */}
+      <Route path="*">
+        <YourComponent />
+      </Route>
+    </Switch>
+  </Router>
+);
+
+export default App
